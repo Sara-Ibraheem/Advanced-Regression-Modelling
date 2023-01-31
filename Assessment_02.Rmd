@@ -1,0 +1,371 @@
+---
+title: "Assessment_02 for MAST8820"
+author: "Sara Ibraheem"
+date: "2022-12-14"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+Module: Advanced Regression Modelling (MAST8820)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Loading libraries#
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(MASS)
+library(gamlss)
+library(patchwork)
+library(GGally)
+```
+
+
+
+
+##                                                  QUESTION: 01
+**(a)  Make a descriptive analysis of the data set, with the goal of analysing the possible relationship between the variable medal, the response variable, and the predictor variables, previous medal and hours training.**
+
+```{r }
+
+
+##reading data##
+my_data <- read.csv("medal.csv")
+
+ggplot(my_data) + aes(hours_training) + geom_histogram(fill = "royalblue", color = "grey75") + theme_minimal() + 
+  facet_grid(previous_medal ~ medal)
+
+
+
+```
+
+
+**Comments:**
+Given the data of the medals, it can be seen in the above plot that given the previous_medal "no" there are more chances of medal  winning indicated by "1" with increase in number of training hours. Given the previous_medal "yes" and more hours of training a positive trend can be seen that is indicated by more chances of medal winning "1". We see that whether the previous_medal "no" and "yes", there are less chances of wining a medal. if there are less hours of training. So even if the previous_medal is "yes" there are more chances of losing indicated by "0" if training hours are less.
+
+
+
+
+**(b)  Fit a generalized linear regression model with medal as the response variable and previous medal and hours training as the explanatory variables and output the summary of the model. Check whether an interaction term is needed.**
+
+
+```{r}
+##fitting generalized linear model##
+model_1 <- glm(medal ~ hours_training + previous_medal , data = my_data, family = binomial)
+summary(model_1)
+anova(model_1)
+
+
+model_2 <- glm(medal ~ hours_training + previous_medal + hours_training * previous_medal , data = my_data, family = binomial)
+summary(model_2)
+anova(model_2)
+```
+
+
+
+
+**(c)  Interpret the generalised linear regression model fitted in part b).**
+
+**Interpretation:**From the output above, two  types of  interpretations can be made, first  we just look  at the estimates given by the model summary to know what they are describing. For instance, taking into account the model_2 with the interaction terms we can say that the log(odds) of wining a medal based on no previous  medal and zero training_hours is -8.45761, log(odds) of wining a medal  based on hours_training is 0.44700, log(odds) of wining a medal based on both previous_medal "yes" and hours_training is 0.47623 which are significant based on the p-values and also as indicated by the anova results which shows that adding hours_training, previous_model and their interaction term decreases the residual deviance.
+Or conversely, we can say that odds of wining a medal is exp(0.44700) the odds to not wining a medal when we increase the hours_training by 1 minute, the odds of wining a medal is exp(0.47623) the odds to not wining a medal considering previous_medal "yes" and when we increase the hours_training by 1 minute.
+
+
+Comparing the two models with and without interaction terms, it can be observed that  the  model_1 and model_2 both have null deviance of 581.28 without any covariates. After  considering the covariates , in model_1  without any interaction terms the AIC is  493.12 and in model_2 with  interaction term it is 486.22 which is less. Now considering the residual deviance, model_1 without interaction terms is 487.12 and for model_2 with interaction terms is 478.22. So based on residual deviance model_2 with less residual deviance of 478.22 is a better fit to the data.
+
+
+
+
+**(d)  Compare the model fitted in b), considering different link functions and select one with the best fit.**
+
+```{r}
+model_3 <- glm(medal ~ previous_medal + hours_training + previous_medal * hours_training, data = my_data, family = binomial(link = "logit"))
+summary(model_3)
+anova(model_3)
+
+
+model_4 <- glm(medal ~ previous_medal + hours_training + previous_medal * hours_training, data = my_data, family = binomial(link = "probit"))
+summary(model_4)
+anova(model_4)
+
+
+model_5 <- glm(medal ~ previous_medal + hours_training + previous_medal * hours_training, data = my_data, family = binomial(link = "cloglog"))
+summary(model_5)
+anova(model_5)
+
+```
+After considering different link functions, it can be seen that the model with best fit is the one with link function "probit" as it has the lowest residual deviance of 477.97. 
+
+
+
+
+
+**(e)  Plot the estimated probabilities of winning a medal, considering the best model selected in the previous item, considering training hours varying from 14 to 20 and athletes with a previous medal and without a previous medal in this competition.**
+
+
+```{r}
+##1st method##
+
+#with hours_training
+predicted.data <- data.frame(
+  probability.of.medal=model_4$fitted.values,
+  md=my_data$previous_medal)
+ 
+predicted.data <- predicted.data[
+  order(predicted.data$probability.of.medal, decreasing=FALSE),]
+predicted.data$rank <- 1:nrow(predicted.data)
+
+ggplot(data=predicted.data, aes(x=rank, y=probability.of.medal)) +
+  geom_point(aes(color=md), alpha=1, shape=4, stroke=2) +
+  xlab("Index") +
+  ylab("Predicted probability of getting a medal")
+
+#with previous_medal
+predicted.data <- data.frame(
+  probability.of.medal=model_4$fitted.values,
+training_hrs=my_data$hours_training)
+ 
+predicted.data <- predicted.data[
+  order(predicted.data$probability.of.medal, decreasing=FALSE),]
+predicted.data$rank <- 1:nrow(predicted.data)
+
+ggplot(data=predicted.data, aes(x=rank, y=probability.of.medal)) +
+  geom_point(aes(color=training_hrs), alpha=1, shape=4, stroke=2) +
+  xlab("Index") +
+  ylab("Predicted probability of getting a medal")
+
+
+
+
+###2nd method##
+#probability of winiing with previous_medal "yes"
+curve(pnorm(cbind(1,1, x, x*1) %*% coef(model_4)), 14, 20, xlab = "hours training", 
+      ylab = "Pr(wining)")
+#probability of wining with previous_medal "no"
+curve(pnorm(cbind(1,0, x, 0*x) %*% coef(model_4)), 14, 20, xlab = "hours training", 
+      ylab = "Pr(wining)", col = 2, add = TRUE)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##                                                  QUESTION: 02
+**(a)  Make a descriptive analysis of the data set, with the goal of analysing the possible relationship between the variable people, the response variable, and the other variables.**
+
+```{r}
+##reading data##
+people_data <- read.csv("people.csv")
+
+
+##plot between people and variables alone and gender
+ggplot(people_data) + aes(people) + geom_histogram(fill = "royalblue", color = "grey75") + theme_minimal() + 
+  facet_grid(alone ~ gender)
+
+#plot between people count and time_obs
+ggplot(data = people_data)+geom_point(aes(x=time_obs,y=people),size=2)
+
+
+##scatterplot between people count and all the explanatory variables
+ggplot(data = people_data)+geom_point(aes(x=time_obs,y=people,colour=as.factor(gender),shape=as.factor(alone)),size=2)
+
+ggplot(people_data, aes(y=people, x = time_obs)) +geom_point() +theme(legend.position="top") + facet_grid(~ alone + gender)
+
+
+
+```
+
+
+
+From the plots above, we can see that there is a general trend of increase in the count of people observed with respect to the time-observed. As there are more minutes of observation the count of people observed is also more. And generally there are more males observed alone as compared to the females. 
+
+
+
+
+
+
+**(b) Fit a generalized linear regression model with people as the response variable and the other variables as the explanatory variables. Compare the use of time obs as an offset and as a regular predictor variable. Output the summary of the model and comment on how you should use time obs in your model.**
+
+
+```{r}
+
+model_fit_1 <-  glm(people ~ time_obs + gender + alone , data = people_data, family = poisson)
+summary(model_fit_1)
+anova(model_fit_1)
+
+model_fit_2 <-  glm(people ~ gender + alone , offset = (log(time_obs)) , data = people_data, family = poisson)
+summary(model_fit_2)
+anova(model_fit_2)
+
+
+```
+
+**Comments**
+When we are using time_obs as an offset we are basically using predictor without any parameter.
+An offset variable represents the size, exposure or measurement time(in our case), or population size of each observational unit. The regression coefficient for an offset variable is constrained to be 1, thus allowing our model to represent rates rather than counts. In pur regression model, the offset variable is equal to the log of the measurement time.
+From the outputs above, time_obs should be used as an offset as the overall residual deviance decreases from 56.27 to 51.64 in that case.
+
+
+
+
+
+**(c) Interpret the generalised linear regression model fitted in part b).**
+
+
+
+
+*Interpretation*
+From the summary of the best fitted model in part b considering time_obs as an offset which was a better choice, we can see that the rate of observing males is 0.26693 more than the females and rate of observing people alone is 0.38598 more than those not alone. So it can be concluded seeing all the p-values (which are <0.05) as well that there is a significance difference between rates of observing people when it comes to gender that is male and female, and also between the rates of observing people alone and not alone.
+
+
+
+
+
+
+
+
+**(d)  Check whether an interaction term should be added or not to the model. Interpret the new model, in case you add this term.**
+
+```{r}
+
+
+model_fit_3 <-  glm(people ~ gender + alone + gender*alone , offset = (log(time_obs)) , data = people_data, family = poisson)
+summary(model_fit_3)
+
+
+```
+
+
+*Interpretation*
+From the output summary adding an interaction term has significantly decreased the AIC and also the residual deviance to 378.87 and 32.568 respectively. Interpreting the estimates, it can be seen that the rate of observing male for being both alone and alone is more than the females and the difference is 0.15428+0.21969 which is significant indicated by less p-value. Also rate of observing people alone for both the genders is more than those not alone and the difference is 0.27609+0.21969 which is also significant given by the less p-value. 
+
+
+
+
+**(e) Compare the fit using the Poisson distribution and a negative binomial distribution as the probability distribution for your response variable.**
+
+```{r}
+model_fit_4 <- glm(people ~ alone + gender , offset=(log(time_obs)), data = people_data, family = poisson)
+summary(model_fit_4)
+
+
+model_fit_5 <- MASS::glm.nb(people ~ alone + gender + offset(log(time_obs)), data = people_data, link = log)
+summary(model_fit_5)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+From the above outputs, it can be seen that negative binomial reduces the residual deviance more than the poisson distribution. So it is better fit but it can be said that there isn't much difference as it can be observed from plots as well.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

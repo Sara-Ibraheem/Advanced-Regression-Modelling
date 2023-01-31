@@ -1,0 +1,374 @@
+---
+title: "Assessment_01 for MAST8820"
+author: "Sara Ibraheem"
+date: "2022-11-14"
+Module: "Advanced Regression Analysis (MAST8820)"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+##                                                  QUESTION: 01
+**(a) Produce one plot that could show the difference between the distribution of weight improvement given the two training groups and comment.**
+
+```{r }
+#Loading libraries#
+library(ggplot2)
+library(dplyr)
+library(MASS)
+
+##reading data##
+my_data <- read.csv("weightlifters.csv")
+
+##density curves##
+ggplot(my_data) +
+  theme_bw() +
+  aes(x = weight_improvement, y = ..density..) +
+  geom_density(aes(color = training_groups))
+
+ggplot(my_data) + geom_density(aes(x = weight_improvement, fill = training_groups), adjust = 1, alpha = 0.5)
+
+##boxplot##
+ggplot(my_data) + geom_boxplot(aes(x = training_groups
+, y = weight_improvement
+)) + theme_classic()
+
+```
+
+
+**Comments:**
+The density curves above show the difference between the distributions of the weight improvements for two training groups A and B. As it can be observed that there is significant difference between the means of A and B groups. Similarly, using box plot it can be clearly seen that there is a significant difference between medians and quartiles of the two groups.
+
+
+
+
+**(b) Fit a simple linear regression model with weight improvement as the response variable and training group as the explanatory variable and output the summary of the model.**
+
+
+```{r}
+##fitting linear regression model##
+model_fit1 <- lm(weight_improvement ~ training_groups, data = my_data )
+summary(model_fit1)
+#checking the assigned values to A and B
+contrasts(as.factor(my_data$training_groups))
+```
+
+
+
+
+**(c) Interpret the simple linear regression model fitted in part b) by referring to the estimated intercept and slope of the model.**
+
+**Interpretation:**From the output above, the average weight improvements for group A is estimated to be 12.1318, whereas for group B 7.8389 is estimated a total of 12.1318 - 4.2929 = 7.8389. The p-value for the dummy variable training_groupsB is very significant, suggesting that there is a statistical evidence of a difference in weight improvements between the two groups.
+
+weight improvement = b0 + b1∗traning_groupsB
+                   = 12.1318 - 4.2929*traning_groupsB
+                   = {12.1318 for training_groupA(training_groupsB=0)
+                      7.8389 for training_groupsB(training_groupB=1)}
+
+The difference between the two estimates is significantly different from zero as we test the significacnce of regression coefficient as it is also suggested by the p-value < 0.05. 
+
+
+
+
+**(d) Construct a 95% confidence intervals for the coefficients of the model fitted in part c).**
+
+```{r}
+confint(model_fit1, level = 0.95)
+```
+Because zero is not in this interval, the null is rejected.
+
+
+
+
+
+**(e) What does the summary of the model suggest about the importance of the different training routines as a predictor for weight improvement?**
+
+From the summary of the model, we can see that -4.2929 is the difference in the weight lifting improvements of two training routines. Testing the regression coefficient of training_groupsB, the p_value comes out to be 1.86e-14 which is a quite significant difference at the level of 0.05 as it is very less than 0.05, so the difference is significantly different from zero which was a null_hypothesis and we reject it. This means that the linear model is significant and fits better than the intercept-only (null) model. Thus the two routines are a significant predictors for weight improvement/lifting, incorporating more weight improvements/lifting for group A routines than group B routines.
+
+
+
+
+**(f) Plot the studentised residuals versus the fitted values of the model and comment.**
+
+```{r}
+
+plot(model_fit1$fitted,rstudent(model_fit1), col="purple", pch=1, xlab="Fitted values", ylab="Studentised residuals")
+abline(h=0, col = 7, lwd=1)
+
+```
+
+**Interpretation**
+The plot of Fitted Values vs Studentised residuals is used to check for the assumption of constant variance. If the spread of points increases with the increase of fitted values, the assumption fails.
+Both these categories A and B almost have mean zero and bell-shaped distributions with similar standard deviations with three outliers above 3 and two below -2 respectively. So, here homocedasiticity seems to be working as there is almost the same variance among the two groups except a little bit larger variance in case of the first group. 
+
+
+
+
+
+**(g) Produce a QQ-plot of the studentised residuals of the model fitted and comment.**
+
+```{r}
+qqpoints <- qqnorm(rstudent(model_fit1))
+qqline(rstudent(model_fit1),col = 6, lwd=1)
+
+```
+
+Most points follow the Q-Q line, except some deviations at the tail ends. So, based on this we can conclude that the assumption of normality holds for our linear model.
+
+
+
+
+**(h) Define the multiple R-squared that is reported in the summary of the model and comment on its value in this case.**
+From the summary, Multiple R-squared = 0.459.
+The value of multiple R-squared, also called coefficient of determination, shows what percentage of the variance of the response is explained by our model. Greater the Multiple R-square, better the model. In our scenario, Multiple R-squared explains approximately 45.9% of the variance. Also, in case of  simple linear regression, R2 = r2, where r is the correlation coefficient between x and y.
+
+
+
+
+**(i) Plot the estimated normal densities given the parameters of the model and compare with the real values. Does this estimates show that model explain the variation of weight improvement as a function of the training groups?**
+
+```{r}
+
+g <- my_data %>%
+ggplot() +
+theme_minimal() +
+geom_density(aes(x = weight_improvement,
+color = factor(training_groups)),
+adjust = 2) +
+scale_color_viridis_d(name = "Training group", option = "E") +
+labs(x = "weight_improvement",
+title = "Original density plot of weight improvement",
+subtitle = "Considering different training routines")
+g
+
+
+Training_group_A <- data.frame('x' = rnorm(15000, 12.1318, 2.342), 'y' = rep('A',15000))
+Training_group_B <- data.frame('x' = rnorm(15000, 7.8389, 2.342), 'y' = rep('B',15000))
+
+estimated_density <- rbind(Training_group_A,Training_group_B)
+
+e <- estimated_density %>%
+ggplot() +
+theme_minimal() +
+geom_density(aes(x = x,
+color = factor(y)),
+adjust = 2) +
+scale_color_viridis_d(name = "Training group", option = "E") +
+labs(x = "weight_improvement",
+title = "Estimated density of weight improvement",
+subtitle = "Considering different training routines")
+e
+
+
+```
+
+The plots of the actual density curves considering two training routines and the estimated density curve for improvement in weight lifting are almost the same, the estimates show that model explains the variation of weight improvement as a function of the training groups to be true.
+
+
+
+
+
+
+
+
+
+
+##                                                  QUESTION: 02
+**(a) Produce a scatterplot of the data with age in the x-axis and rent in the y-axis and comment.**
+
+```{r}
+##reading data##
+rent_data <- read.csv("rent.csv")
+g1 <- rent_data %>%
+ggplot() +
+theme_minimal() +
+geom_point(aes(x = age, y = rent)) +
+labs(y = "rent",
+x = "age",
+title = "Scatterplot of age and rent")
+g1
+
+```
+
+From the plot, we can see that the values of rent are almost consistent among the age group from 20 to 40 and then generally increasing with increase in age above 45. Hence, there may be a positive relation between them. However, further analysis must be done to check whether the assumptions of linear regression hold for this data and if the relation can be explained by a linear model.
+
+
+
+
+
+
+**(b) Fit a simple linear regression model with rent as the response variable and age, professional area and city as the explanatory variables. Output the summary of the model and interpret the model fitted.**
+
+
+```{r}
+model_fit_2 <- lm(rent ~ age + professional_area + cities, data = rent_data)
+summary(model_fit_2)
+#checking the assigned values for professions
+contrasts(as.factor(rent_data$professional_area))
+```
+
+**Interpretation**
+From the summary above, we can see that on average people with professional_area_Education pay 193.759 (£ for example) more rent than professional_area_Construction and people with professional_area_Finance on average pay 515.370(£) more rent than people with professional_area_Construction. Similarly, it can be seen from the output above that people living in London on average pay 72.920(£) more rent than those living in Canterbury. So it can be concluded seeing all the p-values (which are <0.05) as well that there is a significance difference between rents of people in Construction profession and education profession, also between the rents of people in Construction profession and Finance profession as well. The difference between rents of Canterbury and London is also significance which is a little less from 0.05.
+
+
+
+
+
+**(c) Update the model fitted in part b) adding an interaction term between professional area and city. Interpret the results obtained and outline the differences with the conclusion in part b).**
+
+```{r}
+model_fit_3 <- lm(rent ~ age + professional_area * cities, data = rent_data)
+summary(model_fit_3)
+```
+
+
+*Interpretation*
+From the summary, we can see that the difference between the two cities rent in terms of same profession construction is not that much significant with p-value 0.0898. And, the difference between rents of people in Education profession between the two cities is 222.1850 - 33.3672 is not really significant with p-value 0.6082. On the other hand, the difference between rents of people in Finance profession between the two cities is 269.2461 + 472.6951(more rent in London as compared to the Canterbury) is really significant with p-value much smaller than 0.05.
+*Comparison*
+In the model of item(b), we saw that people with profession Education and city London paid more rent than those in the same profession and living in Canterbury, so the interaction term in item(c) professional_areaEducation:citiesLondon showing the result otherwise is not really significant as is also indicated by the p-value > 0.05. On the other hand, interaction term professional_areaFinance:citiesLondon shows that people with profession Finance and city London paid more rent than those living in Canterbury which is true as we compare to the model in item(b) and also significant on the basis of p-value which is very small than 0.05.
+
+
+**(d) Plot the studentised residuals of versus the fitted values of the model fitted in part c) and comment.**
+
+```{r}
+
+plot(model_fit_3$fitted,rstudent(model_fit_3), col="purple", pch=1, xlab="Fitted values", ylab="Studentised residuals")
+abline(h=0, col = 7, lwd=1)
+
+
+```
+
+
+*Comments*
+The plot of Fitted Values vs Studentised residuals is used to check for the assumption of constant variance. If the spread of points increases with the increase of fitted values, the assumption fails. From the plot, looking at the residuals it seems like homocedasticity is fine given the sample size is also bigger. 
+
+
+
+
+**(e) Produce a QQ-plot of the studentised residuals of the model model fitted in part c) and comment.**
+
+```{r}
+qqpoints <- qqnorm(rstudent(model_fit_3))
+qqline(rstudent(model_fit1),col = 6, lwd=1)
+```
+
+
+Most points in the middle follow the Q-Q line, except there are some deviations at the tail ends. Hence, we can say that the assumption of normality holds for our linear model as the points fall approximately along the reference line.
+
+
+
+
+
+
+**(f) Consider the method ”forward selection” to pick one model to explain the variation of rent as a function of age, professional area and city with any important interaction term and comment the results.**
+
+```{r}
+model_null <- lm(rent ~ 1, data=rent_data)
+full_model <- lm(rent ~ age + professional_area + cities + age * professional_area + age * cities + professional_area * cities + age * professional_area * cities, data=rent_data)
+
+stepAIC(model_null, scope=list(lower=model_null, upper=full_model), 
+           data=rent_data, direction='forward')
+```
+
+In Forward Selection method, we start with an empty model and then add variables sequentially until no variables are left that contribute "significantly" to the fit of the model. As we can see that after employing forward selection method it has been adding terms based on lowest AIC and at the end added all the terms and gave the lowest AIC of 3127.37. So, according to this method all the variables and the possible interaction terms are contributing significantly to the model.
+
+
+
+
+
+**(g) Plot the estimated densities of rent given the model selected in the previous item.**
+
+```{r}
+model_selected <- lm(rent ~ age + professional_area + cities + age * professional_area + age * cities + professional_area * cities + age * professional_area * cities, data = rent_data)
+summary(model_selected)
+
+
+est_sigma <- 189.6
+
+#considering age constant and professional area education only for both cities london and canterbury
+##for instance, we take age = 20,
+
+#1st case:##
+#In this case, we consider the only estimates values where education = 1, construction = 0, finance = 0, london = 1 and canterbury = 0
+m1 <- 20 - 74.9416  +  0.6999 
+
+city_london <- data.frame('x' = rnorm(15000, m1, est_sigma), 'y' = rep('London',15000))
+
+#2nd case:##
+#In this case, we consider the only estimates values where education = 1, construction = 0, finance = 0, london = 0 and canterbury = 1
+m2 <- 20 + 228.3683 - 0.3053
+
+city_canterbury <- data.frame('x' = rnorm(15000, m2, est_sigma), 'y' = rep('Canterbury',15000))
+
+estimated_density <- rbind(city_london,city_canterbury)
+
+e <- estimated_density %>%
+ggplot() +
+theme_minimal() +
+geom_density(aes(x = x,
+color = factor(y)),
+adjust = 2) +
+scale_color_viridis_d(name = "Cities", option = "E") +
+labs(x = "Rent",
+title = "Estimated density of rent",
+subtitle = "Considering different cities and profession education")
+e
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
